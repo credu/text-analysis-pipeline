@@ -4,7 +4,7 @@ from services.text_analysis import TextAnalysisPipeline
 pipeline: TextAnalysisPipeline = st.session_state["textAnalysisPipeline"]
 corpus = st.session_state["CORPUS"]
 
-st.header("Analizador morfologico")
+st.header("Analizador morfologico", divider=True)
 st.write("Corpus de entrenamiento")
 st.json(corpus)
 
