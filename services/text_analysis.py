@@ -76,13 +76,14 @@ class Preprocessor:
         """Divide el texto en tokens, eliminando puntuación básica."""
         text = args[0] if args else ""
 
-        return re.findall(r"([().]|['\w]+)", text)
+        words = re.findall(r"([().]|['\w]+)", text)
+        return [word for word in words if word not in "!\"'(),-.:;¿?`_{}"]
 
     def normalize(self, *args):
         """Convierte tokens a minúsculas y elimina caracteres no alfanuméricos."""
         tokens = args[0] if args else []
 
-        return [word.lower() for word in tokens if word not in string.punctuation]
+        return [word.lower() for word in tokens if word not in "#$%&*+<=>@[\\/]^|~"]
 
     def remove_stopwords(self, *args):
         """Elimina stopwords de la lista de tokens."""
