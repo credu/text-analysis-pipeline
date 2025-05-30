@@ -1,10 +1,8 @@
-import re
 import streamlit as st
 from services.text_analysis import TextAnalysisPipeline
 
 pipeline: TextAnalysisPipeline = st.session_state["textAnalysisPipeline"]
 corpus = st.session_state["CORPUS"]
-
 
 st.header("Analizador morfologico")
 st.write("Corpus de entrenamiento")
