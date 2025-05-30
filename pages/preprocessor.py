@@ -1,6 +1,6 @@
 import streamlit as st
 
-pipeline = st.session_state.textAnalysisPipeline
+pipeline = st.session_state["textAnalysisPipeline"]
 
 st.header("Preprocesador", divider=True)
 

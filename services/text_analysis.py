@@ -130,72 +130,283 @@ Implementa POS tagging con HMM y Viterbi, y soporte para lematización.
 
 class MorphologicalAnalyzer:
     def __init__(self, *args):
-        """Inicializa el analizador morfológico con un corpus etiquetado."""
+        """Inicializa el analizador con datos de entrenamiento"""
         corpus = args[0] if args else []
-        self.tags = set(['DT', 'NN', 'NNS', 'VBD', 'VBP', 'RB', 'JJ', '<s>', '</s>'])
+        self.tags = {'DT', 'NN', 'NNS', 'VBD', 'VBP', 'RB', 'JJ', '<s>', '</s>'}
         self.transition_probs = defaultdict(lambda: defaultdict(float))
         self.emission_probs = defaultdict(lambda: defaultdict(float))
-        self.train(corpus)
+
+        # Entrenamos el modelo si hay corpus
+        if corpus:
+            self.train(corpus)
 
     def train(self, *args):
         """Calcula probabilidades de transición y emisión a partir del corpus."""
         corpus = args[0] if args else []
-        # TODO: Implementar conteo de transiciones y emisiones
-        pass
+
+        # Procesado del corpus si viene en formato texto
+        if corpus and isinstance(corpus[0], str):
+            corpus_procesado = []
+            for linea in corpus:
+                palabras_etiquetas = []
+                for parte in linea.split():
+                    if '/' in parte and parte not in ('<s>', '</s>'):
+                        palabra, etiqueta = parte.rsplit('/', 1)
+                        palabras_etiquetas.append((palabra.lower(), etiqueta))
+                corpus_procesado.append(palabras_etiquetas)
+            corpus = corpus_procesado
+
+        # Contadores para transiciones y emisiones
+        trans_counts = defaultdict(lambda: defaultdict(int))
+        emis_counts = defaultdict(lambda: defaultdict(int))
+
+        # Contamos ocurrencias en el corpus
+        for oracion in corpus:
+            oracion_con_marcadores = [('<s>', '<s>')] + oracion + [('</s>', '</s>')]
+
+            for i in range(1, len(oracion_con_marcadores)):
+                palabra_actual, etiqueta_actual = oracion_con_marcadores[i]
+                _, etiqueta_anterior = oracion_con_marcadores[i-1]
+
+                # Contamos transiciones
+                trans_counts[etiqueta_anterior][etiqueta_actual] += 1
+
+                # Contamos emisiones (excepto para marcadores)
+                if etiqueta_actual not in ('<s>', '</s>'):
+                    emis_counts[etiqueta_actual][palabra_actual] += 1
+
+        # Convertimos conteos a probabilidades
+        self._convertir_a_probabilidades(trans_counts, emis_counts)
+
+    def _convertir_a_probabilidades(self, trans_counts, emis_counts):
+        """Helper para convertir conteos en probabilidades"""
+        # Probabilidades de transición
+        for etiqueta_origen, destinos in trans_counts.items():
+            total = sum(destinos.values())
+            for etiqueta_destino, conteo in destinos.items():
+                self.transition_probs[etiqueta_origen][etiqueta_destino] = conteo / total if total > 0 else 0.0
+
+        # Probabilidades de emisión
+        for etiqueta, palabras in emis_counts.items():
+            total = sum(palabras.values())
+            for palabra, conteo in palabras.items():
+                self.emission_probs[etiqueta][palabra] = conteo / total if total > 0 else 0.0
 
     def viterbi(self, *args):
         """Implementa el algoritmo de Viterbi para POS tagging."""
         tokens = args[0] if args else []
-        # TODO: Implementar Viterbi para encontrar la secuencia de etiquetas más probable
-        return []
+        if not tokens:
+            return [], []
 
-    def handle_unknown_word(self, *args):
-        """Asigna probabilidades bajas a palabras desconocidas basadas en heurísticas."""
-        word = args[0] if args else ""
-        # TODO: Implementar heurísticas (ej., palabras terminadas en -mente como RB)
-        return {}
+        n = len(tokens)
+        tags = [t for t in self.tags if t not in {'<s>', '</s>'}]
+
+        # Matrices para probabilidades y backpointers
+        V = [{} for _ in range(n)]  # Probabilidades
+        B = [{} for _ in range(n)]  # Mejores etiquetas anteriores
+
+        # Paso inicial
+        primera_palabra = tokens[0].lower()
+        for t in tags:
+            # Probabilidad = P(t|<s>) * P(palabra|t)
+            prob_trans = self.transition_probs['<s>'].get(t, 0.000001)
+            prob_emis = self._get_emission_prob(t, primera_palabra)
+            V[0][t] = prob_trans * prob_emis
+            B[0][t] = '<s>'
+
+        # Pasos siguientes
+        for i in range(1, n):
+            palabra = tokens[i].lower()
+            for t in tags:
+                # Buscamos la mejor etiqueta anterior
+                mejor_prob = -1
+                mejor_etiqueta = None
+
+                for t_prev in tags:
+                    prob = V[i-1][t_prev] * self.transition_probs[t_prev].get(t, 0.000001)
+                    if prob > mejor_prob:
+                        mejor_prob = prob
+                        mejor_etiqueta = t_prev
+
+                # Multiplicamos por probabilidad de emisión
+                prob_emis = self._get_emission_prob(t, palabra)
+                V[i][t] = mejor_prob * prob_emis
+                B[i][t] = mejor_etiqueta
+
+        # Encontrar la mejor secuencia
+        mejor_etiqueta = max(V[-1], key=lambda t: V[-1][t] * self.transition_probs[t].get('</s>', 0.000001))
+        path = [mejor_etiqueta]
+
+        # Reconstruir el camino
+        for i in reversed(range(1, n)):
+            path.insert(0, B[i][path[0]])
+
+        return path, [V[i][tag] for i, tag in enumerate(path)]
+
+    def _get_emission_prob(self, tag, word):
+        """Obtiene probabilidad de emisión, manejando palabras desconocidas"""
+        if word in self.emission_probs[tag]:
+            return self.emission_probs[tag][word]
+        else:
+            # Usar heurísticas para palabras desconocidas
+            return self.handle_unknown_word(word).get(tag, 0.000001)
 
     def tag(self, *args):
         """Etiqueta una lista de tokens con sus categorías morfosintácticas."""
         tokens = args[0] if args else []
-        # TODO: Usar Viterbi para etiquetado
-        return []
+        tags, _ = self.viterbi(tokens)
+        return tags
+
+    def handle_unknown_word(self, *args):
+        """Asigna probabilidades bajas a palabras desconocidas basadas en heurísticas."""
+        word = args[0] if args else ''
+        word = word.lower()
+        heuristics = {}
+
+        # Basado en sufijos comunes en español
+        if word.endswith("mente"):
+            heuristics["RB"] = 0.9  # Adverbio
+        elif word.endswith(("ado", "ido")):
+            heuristics["VBD"] = 0.8  # Participio pasado
+        elif word.endswith(("ar", "er", "ir")):
+            heuristics["VB"] = 0.8   # Infinitivo verbal
+        elif word.endswith(("os", "as", "es")):
+            heuristics["NNS"] = 0.7  # Plural
+        elif word.endswith(("o", "a", "e")):
+            heuristics["NN"] = 0.6   # Singular
+        else:
+            heuristics["NN"] = 0.5   # Valor por defecto
+
+        return heuristics
 
 """# Clase SyntacticAnalyzer
 Implementa análisis sintáctico con el algoritmo CKY.
 """
 
+# No olviden prender la gramatica cnf que esta arriba
+# Tampoco olviden usar el pip install para que muestre grafico
+# El codigo tiene un error que aun no decifro pero en esencia ya esta T-T
+# no le crean
+# confien
+# no le crean v2
+# YA SIRVE, la fe señores, lo mas lindo de la vida
+
+
 class SyntacticAnalyzer:
     def __init__(self, *args):
-        """Inicializa el analizador sintáctico con una gramática en CNF."""
         grammar = args[0] if args else {}
         self.grammar = grammar
         self.non_terminals = set(grammar.keys())
         self.terminals = set()
         self.build_terminal_set()
 
-    def build_terminal_set(self, *args):
-        """Construye el conjunto de terminales a partir de la gramática."""
-        # TODO: Extraer terminales de la gramática
-        pass
+    def build_terminal_set(self):
+        for values in [value for values in self.grammar.values() for value in values]:
+            for value in values:
+                if not isinstance(value, float) and value not in self.non_terminals:
+                    self.terminals.add(value)
 
     def cky_parse(self, *args):
-        """Implementa el algoritmo CKY para construir el árbol sintáctico."""
         tokens = args[0] if args else []
-        # TODO: Implementar CKY para generar el árbol
-        return None
+        n = len(tokens)
+        backpointers = []
+        table = []
+
+        for i in range(n):
+            fila_table = []
+            fila_back = []
+            for j in range(n):
+                fila_table.append({})
+                fila_back.append({})
+            table.append(fila_table)
+            backpointers.append(fila_back)
+
+        for i in range(n):
+            token = tokens[i]
+            for etiqueta in self.grammar:
+                for resultado in self.grammar[etiqueta]:
+                    if len(resultado) == 2 and resultado[0] == token:
+                        table[i][i][etiqueta] = resultado[1]
+                        backpointers[i][i][etiqueta] = token
+            added = True
+            while added:
+                added = False
+                for A in self.grammar:
+                    for prod in self.grammar[A]:
+                        if len(prod) == 2 and prod[0] in table[i][i] and isinstance(prod[0], str) and prod[0] in self.non_terminals:
+                            B = prod[0]
+                            prob = prod[1] * table[i][i][B]
+                            if A not in table[i][i] or prob > table[i][i][A]:
+                                table[i][i][A] = prob
+                                backpointers[i][i][A] = (i, B)
+                                added = True
+
+        for longitud in range(2, n + 1):
+            for inicio in range(n - longitud + 1):
+                fin = inicio + longitud - 1
+                for division in range(inicio, fin):
+                    izquierda = table[inicio][division]
+                    derecha = table[division + 1][fin]
+                    for etiqueta in self.grammar:
+                        for resultado in self.grammar[etiqueta]:
+                            if len(resultado) == 3:
+                                B, C, prob = resultado
+                                if B in izquierda and C in derecha:
+                                    prob_total = izquierda[B] * derecha[C] * prob
+                                    if etiqueta not in table[inicio][fin] or prob_total > table[inicio][fin][etiqueta]:
+                                        table[inicio][fin][etiqueta] = prob_total
+                                        backpointers[inicio][fin][etiqueta] = (division, B, C)
+
+        return backpointers
+
 
     def build_tree(self, *args):
         """Construye el árbol sintáctico a partir de los backpointers del CKY."""
         backpointers, start, end, symbol = args[:4] if len(args) >= 4 else ({}, 0, 0, '')
-        # TODO: Implementar reconstrucción del árbol
-        return {}
+        print(f"Build tree: {symbol} [{start}, {end}]")
+        if symbol not in backpointers[start][end]:
+            return (symbol, "Not Found")
 
-    def visualize_tree(self, *args):
-        """Visualiza el árbol sintáctico usando matplotlib o texto."""
-        tree = args[0] if args else {}
-        # TODO: Implementar visualización (texto o gráfica)
-        pass
+        data = backpointers[start][end][symbol]
+
+        if isinstance(data, str):
+            return (symbol, data)
+        elif isinstance(data, tuple) and len(data) == 2:
+            tipo, hijo = data
+            return (symbol, self.build_tree(backpointers, start, end, hijo))
+        elif isinstance(data, tuple) and len(data) == 3:
+            division, izquierdo, derecho = data
+            izquierda = self.build_tree(backpointers, start, division, izquierdo)
+            derecha = self.build_tree(backpointers, division + 1, end, derecho)
+            return (symbol, izquierda, derecha)
+        else:
+            return (symbol, "Invalid")
+
+    def visualize_tree(self, tree):
+        def build_lines(node, indent=""):
+            lines = []
+            if isinstance(node, tuple):
+                label = node[0]
+                lines.append(indent + label)
+                for child in node[1:]:
+                    lines.extend(build_lines(child, indent + "  "))
+            else:
+                lines.append(indent + str(node))
+            return lines
+
+        lines = build_lines(tree)
+
+        fig, ax = plt.subplots()
+        ax.axis('off')
+        text = '\n'.join(lines)
+        ax.text(0, 1, text, ha='left', va='top', family='monospace')
+        plt.title('Árbol Sintáctico')
+        plt.tight_layout()
+        plt.show()
+
+        # Nota de Jesus
+        # Es necesario retornar la figura su renderizacion en streamlit
+        return fig
 
 """# Pipeline Completo
 Integra las clases anteriores en un pipeline unificado.
