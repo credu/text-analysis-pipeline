@@ -3,22 +3,13 @@ import streamlit as st
 from services.text_analysis import TextAnalysisPipeline
 
 pipeline: TextAnalysisPipeline = st.session_state["textAnalysisPipeline"]
+corpus = st.session_state["CORPUS"]
+
 
 st.header("Analizador morfologico")
-
-corpus_input = st.text_area(
-    label="Corpus de entrenamiento",
-    value="<s> el/DT señor/NN vino/VBD tarde/RB </s>\n" +
-    "<s> la/DT mujer/NN corre/VBP rápido/RB </s>\n" +
-    "<s> un/DT gato/NN salta/VBP alto/JJ </s>\n" +
-    "<s> los/DT perros/NNS ladran/VBP fuerte/RB </s>",
-    height=120
-)
-
-
-corpus = re.findall(r"^<s>[\w\s/]+</s>$", corpus_input, flags=re.MULTILINE)
+st.write("Corpus de entrenamiento")
+st.json(corpus)
 pipeline.morph_analyzer.train(corpus)
-corpus
 
 text_input = st.text_input(
     label="Texto a analizar para etiquetar y viterbi:",

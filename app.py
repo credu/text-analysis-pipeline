@@ -3,7 +3,7 @@ from services.text_analysis import TextAnalysisPipeline
 
 if "preprocessor" not in st.session_state:
     # Corpus proporcionado para entrenamiento
-    CORPUS = [
+    st.session_state["CORPUS"] = [
         "<s> el/DT señor/NN vino/VBD tarde/RB </s>",
         "<s> la/DT mujer/NN corre/VBP rápido/RB </s>",
         "<s> un/DT gato/NN salta/VBP alto/JJ </s>",
@@ -11,22 +11,34 @@ if "preprocessor" not in st.session_state:
     ]
 
     # Gramática en CNF
-    GRAMMAR_CNF = {
+    st.session_state["GRAMMAR_CNF"] = {
         'O': [('SN', 'SV', 1.0)],
         'SN': [('DT', 'N', 1.0)],
         'SV': [('V', 'SAdv', 0.5), ('V', 'SN', 0.5)],
         'SP': [('Prep', 'SN', 1.0)],
         'DT': [('el', 0.25), ('la', 0.25), ('un', 0.25), ('los', 0.25)],
-        'N': [('señor', 0.2), ('mujer', 0.2), ('gato', 0.2), ('perros', 0.2), ('biblioteca', 0.2)],
-        'V': [('vino', 0.25), ('corre', 0.25), ('salta', 0.25), ('ladran', 0.25)],
+        'N': [
+            ('señor', 0.2),
+            ('mujer', 0.2),
+            ('gato', 0.2),
+            ('perros', 0.2),
+            ('biblioteca', 0.2)
+        ],
+        'V': [
+            ('vino', 0.25),
+            ('corre', 0.25),
+            ('salta', 0.25),
+            ('ladran', 0.25)
+        ],
         'Prep': [('en', 0.5), ('de', 0.5)],
         'SAdv': [('RB', 0.5), ('JJ', 0.5)],
         'RB': [('tarde', 0.33), ('rápido', 0.33), ('fuerte', 0.33)],
         'JJ': [('alto', 1.0)]
     }
+
     st.session_state["textAnalysisPipeline"] = TextAnalysisPipeline(
-        CORPUS,
-        GRAMMAR_CNF,
+        st.session_state["CORPUS"],
+        st.session_state["GRAMMAR_CNF"],
         stopwords_path="data/stopwords-es.txt"
     )
 
