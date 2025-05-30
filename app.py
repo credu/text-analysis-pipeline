@@ -52,6 +52,7 @@ syntactic_analyzer_page = st.Page(
     "pages/syntactic_analyzer.py", title="Analizador Sintactico"
 )
 pipeline_page = st.Page("pages/pipeline.py", title="Demostración de pipeline")
+process_page = st.Page("pages/process_file.py", title="Procesar archivo")
 
 # Set up navigation
 pg = st.navigation([
@@ -60,6 +61,7 @@ pg = st.navigation([
     morphological_analyzer_page,
     syntactic_analyzer_page,
     pipeline_page,
+    process_page,
 ])
 
 # Run the selected page
