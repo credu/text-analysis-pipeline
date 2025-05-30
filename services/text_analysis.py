@@ -16,12 +16,9 @@ Original file is located at
 """
 
 import re
-import numpy as np
-import string
-from collections import defaultdict, Counter
+from collections import defaultdict
 import json
 import matplotlib.pyplot as plt
-from typing import List, Dict, Tuple, Optional
 
 # Corpus proporcionado para entrenamiento
 CORPUS = [
