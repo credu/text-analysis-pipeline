@@ -364,7 +364,6 @@ class SyntacticAnalyzer:
     def build_tree(self, *args):
         """Construye el árbol sintáctico a partir de los backpointers del CKY."""
         backpointers, start, end, symbol = args[:4] if len(args) >= 4 else ({}, 0, 0, '')
-        print(f"Build tree: {symbol} [{start}, {end}]")
         if symbol not in backpointers[start][end]:
             return (symbol, "Not Found")
 
