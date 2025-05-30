@@ -7,22 +7,6 @@ corpus = st.session_state["CORPUS"]
 st.header("Analizador morfologico")
 st.write("Corpus de entrenamiento")
 st.json(corpus)
-pipeline.morph_analyzer.train(corpus)
-
-text_input = st.text_input(
-    label="Texto a analizar para etiquetar y viterbi:",
-    autocomplete="off"
-)
-if text_input != "":
-    tokens, lemmas = pipeline.preprocessor.process(text_input)
-
-    st.write("Etiquetas")
-    tags = pipeline.morph_analyzer.tag(tokens)
-    tags
-    st.write("Viterbi")
-    viterbi = pipeline.morph_analyzer.viterbi(tokens)
-    viterbi
-
 
 word_input = st.text_input(
     label="Palabra desconocida a obtener su probabilidad basado en heurística:"
@@ -32,3 +16,27 @@ if " " in word_input:
 elif word_input != "":
     heuristics = pipeline.morph_analyzer.handle_unknown_word(word_input)
     heuristics
+
+default_text = "Seleccione una opción"
+text_input = st.selectbox(
+    label="Oraciones permitidas para etiquetar y viterbi",
+    accept_new_options=True,
+    options=[
+        default_text,
+        "El señor vino tarde",
+        "La mujer corre rápido",
+        "Un gato salta alto",
+        "Los perros ladran fuerte",
+    ]
+)
+
+if text_input != "" and text_input != default_text:
+    tokens, lemmas = pipeline.preprocessor.process(text_input)
+
+    st.write(f"tokens: {tokens}")
+    st.write("Etiquetas")
+    tags = pipeline.morph_analyzer.tag(tokens)
+    tags
+    st.write("Viterbi")
+    viterbi = pipeline.morph_analyzer.viterbi(tokens)
+    st.write(viterbi)
