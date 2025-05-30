@@ -31,7 +31,7 @@ text_input = st.selectbox(
 )
 
 if text_input != "" and text_input != default_text:
-    tokens, lemmas = pipeline.preprocessor.process(text_input)
+    tokens = pipeline.preprocessor.tokenize(text_input)
 
     st.write(f"tokens: {tokens}")
     st.write("Etiquetas")
@@ -39,4 +39,4 @@ if text_input != "" and text_input != default_text:
     tags
     st.write("Viterbi")
     viterbi = pipeline.morph_analyzer.viterbi(tokens)
-    st.write(viterbi)
+    st.table(viterbi)
