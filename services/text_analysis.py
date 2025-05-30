@@ -413,6 +413,7 @@ class SyntacticAnalyzer:
 Integra las clases anteriores en un pipeline unificado.
 """
 
+
 class TextAnalysisPipeline:
     def __init__(self, *args, stopwords_path=None):
         """Inicializa el pipeline con los componentes necesarios."""
@@ -427,12 +428,16 @@ class TextAnalysisPipeline:
         text = args[0] if args else ""
         # Preprocesamiento
         tokens, lemmas = self.preprocessor.process(text)
+        tokens_with_stopwords = self.preprocessor.tokenize(text.lower())
 
         # Análisis morfológico
         tagged_tokens = self.morph_analyzer.tag(tokens)
 
         # Análisis sintáctico
-        parse_tree = self.synt_analyzer.cky_parse(tokens)
+        backpointers = self.synt_analyzer.cky_parse(tokens_with_stopwords)
+        parse_tree = pipeline.synt_analyzer.build_tree(
+            backpointers, 0, len(tokens_with_stopwords) - 1, 'O'
+        )
 
         return {
             'tokens': tokens,
@@ -448,7 +453,12 @@ class TextAnalysisPipeline:
         print("Lemas:", results.get('lemmas', []))
         print("POS Tags:", results.get('pos_tags', []))
         print("Árbol Sintáctico:")
-        self.synt_analyzer.visualize_tree(results.get('parse_tree', {}))
+        parse_tree = results.get('parse_tree', {})
+        if parse_tree[1] == "Not Found" or parse_tree[1] == "Invalid":
+            print("Error: Este programa no esta capacitado para representar esta oración")
+        else:
+            self.synt_analyzer.visualize_tree(parse_tree)
+
 
 """# Demostración
 Prueba el pipeline con oraciones de ejemplo.
