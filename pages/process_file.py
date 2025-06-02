@@ -40,8 +40,8 @@ if input_file is not None:
     except Exception:
         st.write("Error: Se genero un error desconocido")
 else:
-    st.download_button(
-        label="Descargar archivo de prueba",
-        data="https://raw.githubusercontent.com/credu/text-analysis-pipeline/refs/heads/main/data/input_sentences.txt",
+    st.link_button(
+        label="Ver archivo de ejemplo",
+        url="https://raw.githubusercontent.com/credu/text-analysis-pipeline/refs/heads/main/data/input_sentences.txt",
         icon="🧪"
     )
